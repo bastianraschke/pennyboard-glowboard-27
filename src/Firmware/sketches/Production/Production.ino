@@ -1,11 +1,12 @@
 #include <NonDelayNeoPixelAnimations.h>
-#include "Wire.h"
+#include <SimpleMPU6050A.h>
 
 #define PIN_NEOPIXELS 10
 #define NEOPIXELS_COUNT 25
 #define NEOPIXELS_BRIGHTNESS 255
 
 NonDelayNeoPixelAnimations np = NonDelayNeoPixelAnimations(PIN_NEOPIXELS, NEOPIXELS_COUNT, NEOPIXELS_BRIGHTNESS, &onComplete);
+SimpleMPU6050A as = SimpleMPU6050A();
 
 void onComplete()
 {
@@ -21,11 +22,38 @@ void onComplete()
 
 void setup()
 {
-    Serial.begin(115200);
+    Serial.begin(38400); // 115200
     Serial.println("setup()");
+
+   // np.setup();
+    //np.setState(RAINBOW);
+
+    as.setup();
+
+    Serial.println("Calibrating MPU6050 gyro and accelaration sensor...");
+    as.calibrate();
+    Serial.println("Calibration done.");
 }
 
 void loop()
 {
-    np.update();
+    //np.update();
+
+    as.update();
+
+
+  if(Serial.available())
+  {
+    char rx_char;
+    // dummy read
+    rx_char = Serial.read();
+    // we have to send data, as requested
+    if (rx_char == '.'){
+      Serial.print(as.getGyroX(), 2);
+      Serial.print(", ");
+      Serial.print(as.getGyroY(), 2);
+      Serial.print(", ");
+      Serial.println(as.getGyroZ(), 2);
+    }
+  }
 }

@@ -17,8 +17,15 @@ public:
         this->pixelCount = pixelCount;
         this->brightness = brightness;
         this->onCompleteCallback = onCompleteCallback;
+    }
 
-        setupNeopixels();
+    void setup()
+    {
+        Serial.println("Setup Neopixels...");
+
+        neopixelStrip = Adafruit_NeoPixel(pixelCount, neopixelPin, NEO_GRB + NEO_KHZ800);
+        neopixelStrip.begin();
+        neopixelStrip.setBrightness(brightness);
     }
 
     void update()
@@ -58,17 +65,7 @@ private:
     uint16_t currentIndex = 0;
     uint16_t totalSteps = 255;
 
-
     State state;
-
-    void setupNeopixels()
-    {
-        Serial.println("Setup Neopixels...");
-
-        neopixelStrip = Adafruit_NeoPixel(pixelCount, neopixelPin, NEO_GRB + NEO_KHZ800);
-        neopixelStrip.begin();
-        neopixelStrip.setBrightness(brightness);
-    }
 
     void onUpdate()
     {
