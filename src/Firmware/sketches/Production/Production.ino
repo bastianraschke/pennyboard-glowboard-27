@@ -25,8 +25,8 @@ void setup()
     Serial.begin(38400); // 115200
     Serial.println("setup()");
 
-   // np.setup();
-    //np.setState(RAINBOW);
+    np.setup();
+    np.setState(TWOCOLOR);
 
     as.setup();
 
@@ -37,7 +37,7 @@ void setup()
 
 void loop()
 {
-    //np.update();
+    np.update();
 
     as.update();
 

@@ -76,7 +76,7 @@ private:
                 break;
 
             case TWOCOLOR:
-                twoColors(0xff0000, 0x00ff00);
+                twoColors(0x00AEFF, 0xA92CCE);
                 break;
         }
     }
