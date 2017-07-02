@@ -21,8 +21,6 @@ public:
 
     void setup()
     {
-        Serial.println("Setup Neopixels...");
-
         neopixelStrip = Adafruit_NeoPixel(pixelCount, neopixelPin, NEO_GRB + NEO_KHZ800);
         neopixelStrip.begin();
         neopixelStrip.setBrightness(brightness);

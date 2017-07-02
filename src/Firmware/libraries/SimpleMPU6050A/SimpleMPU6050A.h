@@ -3,8 +3,8 @@
 
 #define MPU6050_I2C_ADDRESS 0x68
 
-#define FREQ  30.0 // sample freq in Hz
-
+// Sample frequency in Hz
+#define FREQ  30.0
 
 
 class SimpleMPU6050A
@@ -68,12 +68,12 @@ public:
         gyrYoffs = ySum / num;
         gyrZoffs = zSum / num;
 
-        Serial.println("Calibration result:");
-        Serial.print(gyrXoffs);
-        Serial.print(", ");
-        Serial.print(gyrYoffs);
-        Serial.print(", ");
-        Serial.println(gyrZoffs);
+        // Serial.println("Calibration result:");
+        // Serial.print(gyrXoffs);
+        // Serial.print(", ");
+        // Serial.print(gyrYoffs);
+        // Serial.print(", ");
+        // Serial.println(gyrZoffs);
     }
 
     void update()
@@ -116,8 +116,6 @@ public:
             gx = gx * 0.96 + ax * 0.04;
             gy = gy * 0.96 + ay * 0.04;
         }
-
-
     }
 
     int16_t getRawAccX()
