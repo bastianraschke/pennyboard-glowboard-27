@@ -2,3 +2,7 @@
 	path = src/Firmware/libraries/Adafruit_NeoPixel
 	url = https://github.com/adafruit/Adafruit_NeoPixel.git
 	branch = master
+[submodule "src/Firmware/libraries/IRremote"]
+	path = src/Firmware/libraries/IRremote
+	url = https://github.com/z3t0/Arduino-IRremote.git
+	branch = master
