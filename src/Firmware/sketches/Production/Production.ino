@@ -1,59 +1,83 @@
 #include <NonDelayNeoPixelAnimations.h>
 #include <SimpleMPU6050A.h>
+#include <IRremote.h>
 
 #define PIN_NEOPIXELS 10
 #define NEOPIXELS_COUNT 25
 #define NEOPIXELS_BRIGHTNESS 255
 
-NonDelayNeoPixelAnimations np = NonDelayNeoPixelAnimations(PIN_NEOPIXELS, NEOPIXELS_COUNT, NEOPIXELS_BRIGHTNESS, &onComplete);
-SimpleMPU6050A as = SimpleMPU6050A();
+#define PIN_IRRECEIVER 2
 
-void onComplete()
+NonDelayNeoPixelAnimations neoPixels = NonDelayNeoPixelAnimations(PIN_NEOPIXELS, NEOPIXELS_COUNT, NEOPIXELS_BRIGHTNESS, &onNeoPixelAnimationComplete);
+SimpleMPU6050A motionSensor = SimpleMPU6050A();
+IRrecv irReceiver = IRrecv(PIN_IRRECEIVER);
+
+decode_results irReceiverResults;
+
+void onNeoPixelAnimationComplete()
 {
-    // j++;
-
-    // if (j % 2 == 0) {
-    //     np.setState(RAINBOW);
-    // } else {
-    //     np.setState(TWOCOLOR);
-    // }
-    // Serial.println("onComplete()");
+    // Not needed
 }
 
 void setup()
 {
-    Serial.begin(38400); // 115200
-    Serial.println("setup()");
+    Serial.begin(115200);
 
-    np.setup();
-    np.setState(TWOCOLOR);
+    setupNeoPixels();
+    setupIrReceiver();
+    setupMotionSensor();
+}
 
-    as.setup();
+void setupNeoPixels()
+{
+    Serial.println("setupIrReceiver(): Setup NeoPixels...");
+    neoPixels.setup();
+    Serial.println("setupIrReceiver(): NeoPixels ready.");
 
-    Serial.println("Calibrating MPU6050 gyro and accelaration sensor...");
-    as.calibrate();
-    Serial.println("Calibration done.");
+    // Startup scene
+    neoPixels.setState(TWOCOLOR);
+}
+
+void setupIrReceiver()
+{
+    Serial.println("setupIrReceiver(): Setup IR receiver...");
+    irReceiver.enableIRIn();
+    Serial.println("setupIrReceiver(): IR receiver is ready.");
+}
+
+void setupMotionSensor()
+{
+    Serial.println("setupMotionSensor(): Calibrating MPU6050 gyro and accelaration sensor...");
+    // Calibrate only
+    motionSensor.calibrate();
+
+    // Setup registers etc.
+    motionSensor.setup();
+
+    Serial.println("setupMotionSensor(): Calibration done. Sensor is ready.");
 }
 
 void loop()
 {
-    np.update();
+   neoPixels.update();
+   motionSensor.update();
 
-    as.update();
+    if (irReceiver.decode(&irReceiverResults))
+    {
+        const int decodedValue = irReceiverResults.value;
+        Serial.println(decodedValue, HEX);
 
+        switch(decodedValue)
+        {
+            case 0xFFFF:
+                neoPixels.setState(RAINBOW);
+                break;
 
-  if(Serial.available())
-  {
-    char rx_char;
-    // dummy read
-    rx_char = Serial.read();
-    // we have to send data, as requested
-    if (rx_char == '.'){
-      Serial.print(as.getGyroX(), 2);
-      Serial.print(", ");
-      Serial.print(as.getGyroY(), 2);
-      Serial.print(", ");
-      Serial.println(as.getGyroZ(), 2);
+            default:
+                neoPixels.setState(TWOCOLOR);
+                break;
+        }
+
+        irReceiver.resume();
     }
-  }
 }
