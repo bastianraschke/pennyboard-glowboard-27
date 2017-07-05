@@ -48,6 +48,7 @@ void setupIrReceiver()
 void setupMotionSensor()
 {
     Serial.println("setupMotionSensor(): Calibrating MPU6050 gyro and accelaration sensor...");
+
     // Calibrate only
     motionSensor.calibrate();
 
@@ -57,24 +58,66 @@ void setupMotionSensor()
     Serial.println("setupMotionSensor(): Calibration done. Sensor is ready.");
 }
 
+bool isIRReceicerIdle()
+{
+  return (irReceiver.decode(&irReceiverResults) || irReceiverResults.rawlen == 0);
+}
+
 void loop()
 {
-   neoPixels.update();
-   motionSensor.update();
+    // Only update Neopixels if the IR is idling to avoid interrupt caused timing issues
+    if (isIRReceicerIdle())
+    {
+        neoPixels.update();
+    }
+
+    motionSensor.update();
 
     if (irReceiver.decode(&irReceiverResults))
     {
-        const int decodedValue = irReceiverResults.value;
+        const long decodedValue = irReceiverResults.value;
         Serial.println(decodedValue, HEX);
 
-        switch(decodedValue)
+        // Important: No default because of busy codes of IR receiver
+        switch (decodedValue)
         {
-            case 0xFFFF:
+            // Button 'Off'
+            case 0xF740BF:
+                neoPixels.setState(OFF);
+                break;
+
+            // Button 'On'
+            case 0xF7C03F:
+                neoPixels.setState(TWOCOLOR);
+                break;
+
+            // Button 'Brighter'
+            case 0xF700FF:
+                neoPixels.setBrightnessHigh();
+                break;
+
+            // Button 'Darker'
+            case 0xF7807F:
+                neoPixels.setBrightnessLow();
+                break;
+
+            // Button 'Flash'
+            case 0xF7D02F:
+                neoPixels.setState(RAINBOWCYCLE);
+                break;
+
+            // Button 'Strobe'
+            case 0xF7F00F:
                 neoPixels.setState(RAINBOW);
                 break;
 
-            default:
-                neoPixels.setState(TWOCOLOR);
+            // Button 'Fade'
+            case 0xF7C837:
+                neoPixels.setState(COLORWIPE);
+                break;
+        
+            // Button 'Smooth'
+            case 0xF7E817:
                 break;
         }
 

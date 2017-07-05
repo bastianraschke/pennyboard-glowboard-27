@@ -2,8 +2,11 @@
 
 enum State
 {
+    OFF,
+    RAINBOWCYCLE,
     RAINBOW,
-    TWOCOLOR   
+    TWOCOLOR,
+    COLORWIPE
 };
 
 class NonDelayNeoPixelAnimations
@@ -23,6 +26,18 @@ public:
     {
         neopixelStrip = Adafruit_NeoPixel(pixelCount, neopixelPin, NEO_GRB + NEO_KHZ800);
         neopixelStrip.begin();
+
+        // Power save mode by default
+        setBrightnessLow();
+    }
+
+    void setBrightnessLow()
+    {
+        neopixelStrip.setBrightness(brightness / 3);
+    }
+
+    void setBrightnessHigh()
+    {
         neopixelStrip.setBrightness(brightness);
     }
 
@@ -50,6 +65,22 @@ public:
     void setState(const State currentState)
     {
         state = currentState;
+
+        switch(state)
+        {
+            case RAINBOWCYCLE:
+                updateInterval = 12;
+                break;
+
+            case RAINBOW:
+                updateInterval = 25;
+                break;
+
+            case COLORWIPE:
+                updateInterval = 40;
+                currentIndex = 0;
+                break;
+        }
     }
 
 private:
@@ -69,8 +100,20 @@ private:
     {
         switch(state)
         {
-            case RAINBOW:
+            case OFF:
+                allOff();
+                break;
+
+            case RAINBOWCYCLE:
                 rainbowCycle();
+                break;
+
+            case RAINBOW:
+                rainbow();
+                break;
+
+            case COLORWIPE:
+                colorWipe(0x00, 0xFF, 0xAA);
                 break;
 
             case TWOCOLOR:
@@ -79,15 +122,41 @@ private:
         }
     }
 
+    void allOff()
+    {
+        for (int i = 0; i < neopixelStrip.numPixels(); i++)
+        {
+            neopixelStrip.setPixelColor(i, 0x000000);
+        }
+
+        neopixelStrip.show();
+    }
+
     void rainbowCycle()
     {
         const uint16_t neopixelCount = neopixelStrip.numPixels();
 
-        for (int i = 0; i < neopixelCount; i++)
+        for (int i = 0; i < neopixelStrip.numPixels(); i++)
         {
             neopixelStrip.setPixelColor(i, getCurrentWheelColor(((i * 256 / neopixelCount) + currentIndex) & 255));
         }
 
+        neopixelStrip.show();
+    }
+
+    void rainbow()
+    {
+        for (int i = 0; i < neopixelStrip.numPixels(); i++)
+        {
+            neopixelStrip.setPixelColor(i, getCurrentWheelColor((i + currentIndex) & 255));
+        }
+
+        neopixelStrip.show();
+    }
+
+    void colorWipe(byte red, byte green, byte blue)
+    {
+        neopixelStrip.setPixelColor(currentIndex, red, green, blue);
         neopixelStrip.show();
     }
 
@@ -116,7 +185,6 @@ private:
             const uint8_t b = (color1_b * percentage) + (color2_b * (1 - percentage));
 
             const uint32_t currentColor = neopixelStrip.Color(r, g, b);
-
             neopixelStrip.setPixelColor(i, currentColor);
         }
 
