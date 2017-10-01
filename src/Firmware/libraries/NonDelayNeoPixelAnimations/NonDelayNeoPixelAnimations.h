@@ -26,9 +26,6 @@ public:
     {
         neopixelStrip = Adafruit_NeoPixel(pixelCount, neopixelPin, NEO_GRB + NEO_KHZ800);
         neopixelStrip.begin();
-
-        // Power save mode by default
-        setBrightnessLow();
     }
 
     void setBrightnessLow()
