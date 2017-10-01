@@ -6,7 +6,14 @@ enum State
     RAINBOWCYCLE,
     RAINBOW,
     TWOCOLOR,
-    COLORWIPE
+    COLORWIPE,
+    LASERSCANNER
+};
+
+enum Direction
+{
+    LEFT,
+    RIGHT
 };
 
 class NonDelayNeoPixelAnimations
@@ -50,6 +57,7 @@ public:
             if (currentIndex >= totalSteps)
             {
                 currentIndex = 0;
+                direction = (direction == LEFT) ? RIGHT : LEFT;
 
                 if (onCompleteCallback != NULL)
                 {
@@ -77,6 +85,10 @@ public:
                 updateInterval = 40;
                 currentIndex = 0;
                 break;
+
+            case LASERSCANNER:
+                updateInterval = 3;
+                break;
         }
     }
 
@@ -92,10 +104,11 @@ private:
     uint16_t totalSteps = 255;
 
     State state;
+    Direction direction = LEFT;
 
     void onUpdate()
     {
-        switch(state)
+        switch (state)
         {
             case OFF:
                 allOff();
@@ -110,11 +123,15 @@ private:
                 break;
 
             case COLORWIPE:
-                colorWipe(0x00, 0xFF, 0xAA);
+                colorWipe(0x00FFAA);
                 break;
 
             case TWOCOLOR:
                 twoColors(0x00AEFF, 0xA92CCE);
+                break;
+
+            case LASERSCANNER:
+                laserScanner(0x00AEFF);
                 break;
         }
     }
@@ -151,9 +168,41 @@ private:
         neopixelStrip.show();
     }
 
-    void colorWipe(byte red, byte green, byte blue)
+    void laserScanner(const uint32_t primaryColor)
     {
-        neopixelStrip.setPixelColor(currentIndex, red, green, blue);
+        const uint16_t neopixelCount = neopixelStrip.numPixels();
+        const int scannerWidth = 3;
+        
+        int currentLed;
+
+        if (direction == LEFT) {
+            currentLed = map(currentIndex, 0, 255, 0, neopixelCount);
+        } else {
+            currentLed = map(currentIndex, 0, 255, neopixelCount, 0);
+        }
+
+        // TODO: check != 0
+        const uint32_t secondaryColor = (primaryColor >> 16 & 0xFF) / 2 << 16 | (primaryColor >> 8 & 0xFF) / 2 << 8 | (primaryColor >> 0 & 0xFF) / 2;
+
+        for (int i = 0; i < neopixelCount; i++) {
+            if (i == currentLed - scannerWidth) {
+                neopixelStrip.setPixelColor(i, secondaryColor); 
+            } else if (i > currentLed - scannerWidth && i < currentLed + scannerWidth) {
+                neopixelStrip.setPixelColor(i, primaryColor); 
+            } else if (i == currentLed + scannerWidth) {
+                neopixelStrip.setPixelColor(i, secondaryColor); 
+            } else {
+                neopixelStrip.setPixelColor(i, 0x000000);
+            }
+        }
+
+        neopixelStrip.show();
+    }
+
+    void colorWipe(const uint32_t color)
+    {
+        // TODO: wrong usage of currentIndex
+        neopixelStrip.setPixelColor(currentIndex, color);
         neopixelStrip.show();
     }
 

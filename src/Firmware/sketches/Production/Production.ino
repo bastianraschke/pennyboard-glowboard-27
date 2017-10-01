@@ -52,7 +52,7 @@ void setupNeoPixels()
     Serial.println("setupIrReceiver(): NeoPixels ready.");
 
     // Startup scene
-    neoPixels.setState(TWOCOLOR);
+    neoPixels.setState(LASERSCANNER);
 }
 
 void setupIrReceiver()
@@ -136,16 +136,16 @@ void loop()
         neoPixels.update();
     }
 
-    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    // accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-    mergedacc = ax + ay + az;
-    mergedacc = abs(mergedacc); 
+    // mergedacc = ax + ay + az;
+    // mergedacc = abs(mergedacc); 
 
-    if (isNotInRange(mergedacc, initialacc - 1000, initialacc + 1000)) {
-        Serial.println("Movement detected");
-    } else {
-        Serial.println("NO Movement detected");
-    }
+    // if (isNotInRange(mergedacc, initialacc - 1000, initialacc + 1000)) {
+    //     Serial.println("Movement detected");
+    // } else {
+    //     Serial.println("NO Movement detected");
+    // }
 
     // Serial.print("mergedacc = ");
     // Serial.println(mergedacc);
@@ -158,15 +158,15 @@ void loop()
     // Serial.print(gy); Serial.print("\t");
     // Serial.println(gz);
 
-    XposMD = accelgyro.getXPosMotionDetected();
-    XnegMD = accelgyro.getXNegMotionDetected();
-    YposMD = accelgyro.getYPosMotionDetected();
-    YnegMD = accelgyro.getYNegMotionDetected();
-    ZposMD = accelgyro.getZPosMotionDetected();
-    ZnegMD = accelgyro.getZNegMotionDetected();
+    // XposMD = accelgyro.getXPosMotionDetected();
+    // XnegMD = accelgyro.getXNegMotionDetected();
+    // YposMD = accelgyro.getYPosMotionDetected();
+    // YnegMD = accelgyro.getYNegMotionDetected();
+    // ZposMD = accelgyro.getZPosMotionDetected();
+    // ZnegMD = accelgyro.getZNegMotionDetected();
 
-    mot_detect = accelgyro.getIntMotionStatus();
-    zero_detect = accelgyro.getIntZeroMotionStatus();
+    // mot_detect = accelgyro.getIntMotionStatus();
+    // zero_detect = accelgyro.getIntZeroMotionStatus();
     
     // if (XposMD || XnegMD) {
     //     Serial.println("Motion detected on X axis!");
@@ -229,7 +229,7 @@ void loop()
 
     // Serial.println();
 
-    counter++;
+    // counter++;
 
     // if (isNotInRange(motionSensor.getRawAccX(), 15000.0, 17000.0)  && motionSensor.getGyroY() > 40.0) {
     //     neoPixels.setState(OFF);
