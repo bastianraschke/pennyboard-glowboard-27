@@ -1,8 +1,6 @@
 #include <NonDelayNeoPixelAnimations.h>
 #include <SimpleMPU6050A.h>
 #include <IRremote.h>
-#include "I2Cdev.h"
-#include "MPU6050.h"
 
 #define PIN_NEOPIXELS 10
 #define NEOPIXELS_COUNT 25
@@ -10,20 +8,27 @@
 
 #define PIN_IRRECEIVER 2
 
-NonDelayNeoPixelAnimations neoPixels = NonDelayNeoPixelAnimations(PIN_NEOPIXELS, NEOPIXELS_COUNT, NEOPIXELS_BRIGHTNESS, &onNeoPixelAnimationComplete);
-SimpleMPU6050A motionSensor = SimpleMPU6050A();
-IRrecv irReceiver = IRrecv(PIN_IRRECEIVER);
+#define PRINT_SENSOR_DATA 1
 
+NonDelayNeoPixelAnimations neoPixels = NonDelayNeoPixelAnimations(PIN_NEOPIXELS, NEOPIXELS_COUNT, NEOPIXELS_BRIGHTNESS, &onNeoPixelAnimationComplete);
+IRrecv irReceiver = IRrecv(PIN_IRRECEIVER);
 decode_results irReceiverResults;
 
-//MPU6050 accelgyro;
-//MPU6050 accelgyro(0x69); // <-- use for AD0 high
+SimpleMPU6050A motionSensor = SimpleMPU6050A();
 
-int16_t ax, ay, az;
-int16_t gx, gy, gz;
+double initialGyroX;
+double initialGyroY;
+double initialGyroZ;
 
-bool mot_detect, zero_detect; 
-bool XnegMD, XposMD, YnegMD, YposMD, ZnegMD, ZposMD;
+double initialAccX;
+double initialAccY;
+double initialAccZ;
+
+long printSensorDataCounter = 1;
+
+long previousacc = 0;
+long previousAnimationUpdateTimestamp = 0;
+bool previousMovementWasDetected = false;
 
 void onNeoPixelAnimationComplete()
 {
@@ -38,11 +43,9 @@ void setup()
     setupIrReceiver();
     setupMotionSensor();
 
-    //Serial.println("nr;getRawAccX;getRawAccY;getRawAccZ;getRawGyroX;getRawGyroY;getRawGyroZ;getGyroX;getGyroY;getGyroZ;");
-    //Serial.println("nr;getGyroX;getGyroY;getGyroZ;");
-
-    Serial.println("nr;getRawAccX;getRawAccY;getRawAccZ;getGyroX;getGyroY;getGyroZ;");
-    //Serial.println("nr;val");
+    #if PRINT_SENSOR_DATA == 1
+        Serial.println("printSensorDataCounter;getRawAccX;getRawAccY;getRawAccZ;getGyroX;getGyroY;getGyroZ");
+    #endif
 }
 
 void setupNeoPixels()
@@ -62,19 +65,6 @@ void setupIrReceiver()
     Serial.println("setupIrReceiver(): IR receiver is ready.");
 }
 
-double initialGyroX;
-double initialGyroY;
-double initialGyroZ;
-
-double initialAccX;
-double initialAccY;
-double initialAccZ;
-
-double initialmergedacc;
-
-
-long initialGyro;
-
 void setupMotionSensor()
 {
     Serial.println("setupMotionSensor(): Calibrating MPU6050 gyro and accelaration sensor...");
@@ -84,6 +74,8 @@ void setupMotionSensor()
 
     // Setup registers etc.
     motionSensor.setup();
+
+    Serial.println("setupMotionSensor(): Calibration done.");
 
     motionSensor.update();
 
@@ -95,80 +87,26 @@ void setupMotionSensor()
     initialAccY = motionSensor.getRawAccY();
     initialAccZ = motionSensor.getRawAccZ();
 
-    initialmergedacc = motionSensor.getRawAccX() + motionSensor.getRawAccY() + motionSensor.getRawAccZ();
-    initialmergedacc = abs(initialmergedacc); 
+    #if PRINT_SENSOR_DATA == 1
+        Serial.print("setupMotionSensor(): initialGyroX = ");
+        Serial.println(setupMotionSensor(): initialGyroX);
+        
+        Serial.print("setupMotionSensor(): initialGyroY = ");
+        Serial.println(setupMotionSensor(): initialGyroY);
 
-    Serial.print("initialGyroX = ");
-    Serial.println(initialGyroX);
-    
-    Serial.print("initialGyroY = ");
-    Serial.println(initialGyroY);
+        Serial.print("setupMotionSensor(): initialGyroZ = ");
+        Serial.println(setupMotionSensor(): initialGyroZ);
 
-    Serial.print("initialGyroZ = ");
-    Serial.println(initialGyroZ);
+        Serial.print("setupMotionSensor(): initialAccX = ");
+        Serial.println(setupMotionSensor(): initialAccX);
+        
+        Serial.print("setupMotionSensor(): initialAccY = ");
+        Serial.println(setupMotionSensor(): initialAccY);
 
-    Serial.print("initialAccX = ");
-    Serial.println(initialAccX);
-    
-    Serial.print("initialAccY = ");
-    Serial.println(initialAccY);
-
-    Serial.print("initialAccZ = ");
-    Serial.println(initialAccZ);
-
-    Serial.print("initialmergedacc = ");
-    Serial.println(initialmergedacc);
-
-    Serial.println("setupMotionSensor(): Calibration done. Sensor is ready.");
-
-    // Wire.begin();
-
-    // accelgyro.initialize();
-
-    // Serial.println("Testing device connections...");
-    // Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
-
-    // accelgyro.setAccelerometerPowerOnDelay(3); // 3ms delay (default)
-
-    // accelgyro.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
-
-    // accelgyro.setIntMotionEnabled(true); // Generate interupt when motion detected
-    // accelgyro.setMotionDetectionThreshold(2); // 1 LSB = 2mg
-    // accelgyro.setMotionDetectionDuration(1); // 1 LSB = 1ms
-
-    // accelgyro.setIntZeroMotionEnabled(true); // Generate interupt when zero motion detected
-    // accelgyro.setZeroMotionDetectionThreshold(2); // 1 LSB = 2mg
-    // accelgyro.setZeroMotionDetectionDuration(2); // 1 LSB = 64ms
-
-    // accelgyro.setDHPFMode(MPU6050_DHPF_5); // 5Hz low-pass filter
-
-
-
-    // accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-    // initialGyro = ax + ay + az;
-    // initialGyro = abs(initialGyro); 
-
+        Serial.print("setupMotionSensor(): initialAccZ = ");
+        Serial.println(initialAccZ);
+    #endif
 }
-
-bool isIRReceicerIdle()
-{
-  return (irReceiver.decode(&irReceiverResults) || irReceiverResults.rawlen == 0);
-}
-
-long counter = 1;
-
-bool isNotInRange(const double value, const double min, const double max) {
-    return (value <= min || value >= max);
-}
-
-long mergedacc;
-long previousacc = 0;
-long previousupdate;
-long previousanimationupdate = 0;
-bool prevmovementdetected = false;
-
-long noMotionDetectedSince;
 
 void loop()
 {
@@ -178,164 +116,70 @@ void loop()
         neoPixels.update();
     }
 
-    // accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-    // mergedacc = ax + ay + az;
-    // mergedacc = abs(mergedacc); 
-
-    // if (isNotInRange(mergedacc, initialGyro - 1000, initialGyro + 1000)) {
-    //     Serial.println("Movement detected");
-    // } else {
-    //     Serial.println("NO Movement detected");
-    // }
-
-    // Serial.print("mergedacc = ");
-    // Serial.println(mergedacc);
-
-    // Serial.print("a/g:\t");
-    // Serial.print(ax); Serial.print("\t");
-    // Serial.print(ay); Serial.print("\t");
-    // Serial.print(az); Serial.print("\t");
-    // Serial.print(gx); Serial.print("\t");
-    // Serial.print(gy); Serial.print("\t");
-    // Serial.println(gz);
-
-    // XposMD = accelgyro.getXPosMotionDetected();
-    // XnegMD = accelgyro.getXNegMotionDetected();
-    // YposMD = accelgyro.getYPosMotionDetected();
-    // YnegMD = accelgyro.getYNegMotionDetected();
-    // ZposMD = accelgyro.getZPosMotionDetected();
-    // ZnegMD = accelgyro.getZNegMotionDetected();
-
-    // mot_detect = accelgyro.getIntMotionStatus();
-    // zero_detect = accelgyro.getIntZeroMotionStatus();
-    
-    // if (XposMD || XnegMD) {
-    //     Serial.println("Motion detected on X axis!");
-    // }
-
-    // if (YposMD || YnegMD) {
-    //     Serial.println("Motion detected on Y axis!");
-    // }
-
-    // if (ZposMD || ZnegMD) {
-    //     Serial.println("Motion detected on Z axis!");
-    // }
-
-    // if (accelgyro.getZeroMotionDetected()) {
-    //     Serial.println("Zero Motion detected!");
-    // }
-
-    // Serial.print("DieTemp:\t");Serial.println(temp);
-    
-    // Serial.print("ZeroMotion(97):\t");  
-    // Serial.print(zero_detect); Serial.print("\t");
-    // Serial.print("Count: \t");Serial.print(count); Serial.print("\t");
-    // Serial.print(XnegMD); Serial.print("\t");
-    // Serial.print(XposMD); Serial.print("\t");
-    // Serial.print(YnegMD); Serial.print("\t");
-    // Serial.print(YposMD); Serial.print("\t");
-    // Serial.print(ZnegMD); Serial.print("\t");
-    // Serial.println(ZposMD);
-
-    //delay(80);
-
-
-
-
     motionSensor.update();
 
     // TODO: Just use motion is drive axis
+    // TODO: detect pushing
+    // TODO: avoid move detection if gyro is changed
 
-
-    bool movementdetected;
-
-    mergedacc = motionSensor.getRawAccX() + motionSensor.getRawAccY() + motionSensor.getRawAccZ();
-    mergedacc = abs(mergedacc); 
-
-
-
-    if (isNotInRange(mergedacc, previousacc - 500, previousacc + 500)) {
-        previousupdate = millis();
-        previousacc = mergedacc;
-        Serial.println(previousupdate);
-        Serial.println("Movement detected");
-
-        movementdetected = true;
-    } else {
-        movementdetected = false;
-    }
-
-    if (prevmovementdetected != movementdetected) {
-        prevmovementdetected = movementdetected;
-
-
-         if (!movementdetected && (millis() - previousanimationupdate) > 3500) {
-            neoPixels.setState(LASERSCANNER);
-
-            Serial.println("A switching to IDLE");
-
-         } else {
-            neoPixels.setState(RAINBOWCYCLE);
-         }
-        
-        previousanimationupdate = millis();
-
-
-    } else if (!movementdetected && (millis() - previousanimationupdate) > 2000) {
-            previousanimationupdate = millis();
-            neoPixels.setState(LASERSCANNER);
-
-            Serial.println("B switching to IDLE");
-            
-         }
-    else {
-       // Serial.println("prevmovementdetected == movementdetected - do nothing");
-    }
-
+    bool movementWasDetected;
 
     // Serial.print("mergedacc = ");
     // Serial.println(mergedacc);
 
+    long mergedacc = motionSensor.getRawAccX() + motionSensor.getRawAccY() + motionSensor.getRawAccZ();
+    mergedacc = abs(mergedacc); 
+
+    if (isNotInRange(mergedacc, previousacc - 500, previousacc + 500)) {
+        previousacc = mergedacc;
+        Serial.println("Movement detected");
+
+        movementWasDetected = true;
+    } else {
+        movementWasDetected = false;
+    }
+
+    if (previousMovementWasDetected != movementWasDetected) {
+        previousMovementWasDetected = movementWasDetected;
+
+        if (movementWasDetected) {
+            neoPixels.setState(RAINBOWCYCLE);
+            previousAnimationUpdateTimestamp = millis();
+        }
+
+    } else if ((millis() - previousAnimationUpdateTimestamp) > 2000 && !movementWasDetected) {
+        neoPixels.setState(LASERSCANNER);
+        previousAnimationUpdateTimestamp = millis();
+
+        Serial.println("B switching to IDLE");
+    }
+   
 
 
 
 
 
-    // Serial.print(counter);
-    // Serial.print(";");
+    #if PRINT_SENSOR_DATA == 1
+        Serial.print(printSensorDataCounter);
+        Serial.print(";");
 
-    // Serial.print(motionSensor.getRawAccX());
-    // Serial.print(";");
-    // Serial.print(motionSensor.getRawAccY());
-    // Serial.print(";");
-    // Serial.print(motionSensor.getRawAccZ());
-    // Serial.print(";");
+        Serial.print(motionSensor.getRawAccX());
+        Serial.print(";");
+        Serial.print(motionSensor.getRawAccY());
+        Serial.print(";");
+        Serial.print(motionSensor.getRawAccZ());
+        Serial.print(";");
 
-    // // Serial.print(motionSensor.getRawGyroX());
-    // // Serial.print(";");
-    // // Serial.print(motionSensor.getRawGyroY());
-    // // Serial.print(";");
-    // // Serial.print(motionSensor.getRawGyroZ());
-    // // Serial.print(";");
+        Serial.print(motionSensor.getGyroX());
+        Serial.print(";");
+        Serial.print(motionSensor.getGyroY());
+        Serial.print(";");
+        Serial.print(motionSensor.getGyroZ());
+        Serial.print(";");
 
-    // Serial.print(motionSensor.getGyroX());
-    // Serial.print(";");
-    // Serial.print(motionSensor.getGyroY());
-    // Serial.print(";");
-    // Serial.print(motionSensor.getGyroZ());
-    // Serial.print(";");
-
-    // Serial.println();
-
-    // counter++;
-
-    // if (isNotInRange(motionSensor.getRawAccX(), 15000.0, 17000.0)  && motionSensor.getGyroY() > 40.0) {
-    //     neoPixels.setState(OFF);
-    // } else {
-    //     neoPixels.setState(RAINBOWCYCLE);
-    // }
-
+        Serial.println();
+        printSensorDataCounter++;
+    #endif
 
     // if (irReceiver.decode(&irReceiverResults))
     // {
@@ -387,4 +231,14 @@ void loop()
 
     //     irReceiver.resume();
     // }
+}
+
+bool isIRReceicerIdle()
+{
+    return (irReceiver.decode(&irReceiverResults) || irReceiverResults.rawlen == 0);
+}
+
+bool isNotInRange(const double value, const double min, const double max)
+{
+    return (value <= min || value >= max);
 }
