@@ -6,7 +6,6 @@ enum State
     RAINBOWCYCLE,
     RAINBOW,
     TWOCOLOR,
-    COLORWIPE,
     LASERSCANNER
 };
 
@@ -81,11 +80,6 @@ public:
                 updateInterval = 25;
                 break;
 
-            case COLORWIPE:
-                updateInterval = 40;
-                currentIndex = 0;
-                break;
-
             case LASERSCANNER:
                 updateInterval = 2;
                 break;
@@ -120,10 +114,6 @@ private:
 
             case RAINBOW:
                 rainbow();
-                break;
-
-            case COLORWIPE:
-                colorWipe(0x00FFAA);
                 break;
 
             case TWOCOLOR:
@@ -170,11 +160,11 @@ private:
 
     void laserScanner(const uint32_t primaryColor)
     {
-        const uint16_t numberOfLeds = neopixelStrip.numPixels();
+        const uint16_t neopixelCount = neopixelStrip.numPixels();
         const uint8_t scannerPrimaryWidth = 2;
 
         const uint16_t minIndex = 0;
-        const uint16_t maxIndex = numberOfLeds - 1;
+        const uint16_t maxIndex = neopixelCount - 1;
 
         int lLimit;
         int rLimit;
@@ -199,7 +189,7 @@ private:
             (secondaryColorB > 0 ? (secondaryColorB / 2) : 0x00) <<  0
         );
 
-        for (int i = 0; i < numberOfLeds; i++) {
+        for (int i = 0; i < neopixelCount; i++) {
             const int l = currentLimitedIndex - scannerPrimaryWidth;
             const int r = currentLimitedIndex + scannerPrimaryWidth;
 
@@ -214,13 +204,6 @@ private:
             }
         }
 
-        neopixelStrip.show();
-    }
-
-    void colorWipe(const uint32_t color)
-    {
-        // TODO: wrong usage of currentIndex
-        neopixelStrip.setPixelColor(currentIndex, color);
         neopixelStrip.show();
     }
 
