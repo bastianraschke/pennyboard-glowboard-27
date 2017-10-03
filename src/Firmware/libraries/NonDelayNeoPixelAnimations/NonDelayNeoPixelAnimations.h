@@ -19,18 +19,18 @@ class NonDelayNeoPixelAnimations
 {
 public:
     void (*onCompleteCallback)();
-    
-    NonDelayNeoPixelAnimations(const uint8_t neopixelPin, const uint8_t pixelCount, const uint8_t brightness, void (*onCompleteCallback)())
+
+    NonDelayNeoPixelAnimations(const uint8_t neopixelPin, const uint8_t neopixelCount, const uint8_t brightness, void (*onCompleteCallback)())
     {
         this->neopixelPin = neopixelPin;
-        this->pixelCount = pixelCount;
+        this->neopixelCount = neopixelCount;
         this->brightness = brightness;
         this->onCompleteCallback = onCompleteCallback;
     }
 
     void setup()
     {
-        neopixelStrip = Adafruit_NeoPixel(pixelCount, neopixelPin, NEO_GRB + NEO_KHZ800);
+        neopixelStrip = Adafruit_NeoPixel(neopixelCount, neopixelPin, NEO_GRB + NEO_KHZ800);
         neopixelStrip.begin();
     }
 
@@ -89,7 +89,7 @@ public:
 private:
     Adafruit_NeoPixel neopixelStrip;
     uint8_t neopixelPin;
-    uint8_t pixelCount;
+    uint8_t neopixelCount;
     uint8_t brightness;
 
     unsigned long updateInterval = 10;
@@ -128,7 +128,7 @@ private:
 
     void allOff()
     {
-        for (int i = 0; i < neopixelStrip.numPixels(); i++)
+        for (int i = 0; i < neopixelCount; i++)
         {
             neopixelStrip.setPixelColor(i, 0x000000);
         }
@@ -138,9 +138,7 @@ private:
 
     void rainbowCycle()
     {
-        const uint16_t neopixelCount = neopixelStrip.numPixels();
-
-        for (int i = 0; i < neopixelStrip.numPixels(); i++)
+        for (int i = 0; i < neopixelCount; i++)
         {
             neopixelStrip.setPixelColor(i, getCurrentWheelColor(((i * 256 / neopixelCount) + currentIndex) & 255));
         }
@@ -150,7 +148,7 @@ private:
 
     void rainbow()
     {
-        for (int i = 0; i < neopixelStrip.numPixels(); i++)
+        for (int i = 0; i < neopixelCount; i++)
         {
             neopixelStrip.setPixelColor(i, getCurrentWheelColor((i + currentIndex) & 255));
         }
@@ -158,59 +156,8 @@ private:
         neopixelStrip.show();
     }
 
-    void laserScanner(const uint32_t primaryColor)
-    {
-        const uint16_t neopixelCount = neopixelStrip.numPixels();
-        const uint8_t scannerPrimaryWidth = 2;
-
-        const uint16_t minIndex = 0;
-        const uint16_t maxIndex = neopixelCount - 1;
-
-        int lLimit;
-        int rLimit;
-
-        if (direction == LEFT) {
-            lLimit = minIndex + scannerPrimaryWidth;
-            rLimit = maxIndex - scannerPrimaryWidth;
-        } else {
-            lLimit = maxIndex - scannerPrimaryWidth;
-            rLimit = minIndex + scannerPrimaryWidth;
-        }
-
-        const uint16_t currentLimitedIndex = round(map(currentIndex, 0, 255, lLimit, rLimit));
-
-        const uint32_t secondaryColorR = (primaryColor >> 16 & 0xFF);
-        const uint32_t secondaryColorG = (primaryColor >>  8 & 0xFF);
-        const uint32_t secondaryColorB = (primaryColor >>  0 & 0xFF);
-
-        const uint32_t secondaryColor = (
-            (secondaryColorR > 0 ? (secondaryColorR / 2) : 0x00) << 16 |
-            (secondaryColorG > 0 ? (secondaryColorG / 2) : 0x00) <<  8 |
-            (secondaryColorB > 0 ? (secondaryColorB / 2) : 0x00) <<  0
-        );
-
-        for (int i = 0; i < neopixelCount; i++) {
-            const int l = currentLimitedIndex - scannerPrimaryWidth;
-            const int r = currentLimitedIndex + scannerPrimaryWidth;
-
-            if (i == l) {
-                neopixelStrip.setPixelColor(i, secondaryColor); 
-            } else if (i > l && i < r) {
-                neopixelStrip.setPixelColor(i, primaryColor); 
-            } else if (i == r) {
-                neopixelStrip.setPixelColor(i, secondaryColor); 
-            } else {
-                neopixelStrip.setPixelColor(i, 0x000000);
-            }
-        }
-
-        neopixelStrip.show();
-    }
-
     void twoColors(const uint32_t color1, const uint32_t color2)
     {
-        const uint16_t neopixelCount = neopixelStrip.numPixels();
-
         // Split first color to R, B, G parts
         const uint8_t color1_r = (color1 >> 16) & 0xFF;
         const uint8_t color1_g = (color1 >>  8) & 0xFF;
@@ -269,5 +216,70 @@ private:
         }
 
         return currentWheelColor;
+    }
+
+    void laserScanner(const uint32_t primaryColor)
+    {
+        const uint8_t scannerPrimaryWidth = 2;
+
+        const uint16_t minIndex = 0;
+        const uint16_t maxIndex = neopixelCount - 1;
+
+        int lLimit;
+        int rLimit;
+
+        if (direction == LEFT)
+        {
+            lLimit = minIndex + scannerPrimaryWidth;
+            rLimit = maxIndex - scannerPrimaryWidth;
+        }
+        else
+        {
+            lLimit = maxIndex - scannerPrimaryWidth;
+            rLimit = minIndex + scannerPrimaryWidth;
+        }
+
+        const uint16_t currentLimitedIndex = round(map(currentIndex, 0, 255, lLimit, rLimit));
+
+        const uint32_t secondaryColorR = (primaryColor >> 16 & 0xFF);
+        const uint32_t secondaryColorG = (primaryColor >>  8 & 0xFF);
+        const uint32_t secondaryColorB = (primaryColor >>  0 & 0xFF);
+
+        // Use the half of primary color as secondary color
+        const uint32_t secondaryColor = (
+            (secondaryColorR > 0 ? (secondaryColorR / 2) : 0x00) << 16 |
+            (secondaryColorG > 0 ? (secondaryColorG / 2) : 0x00) <<  8 |
+            (secondaryColorB > 0 ? (secondaryColorB / 2) : 0x00) <<  0
+        );
+
+        for (int i = 0; i < neopixelCount; i++)
+        {
+            const int l = currentLimitedIndex - scannerPrimaryWidth;
+            const int r = currentLimitedIndex + scannerPrimaryWidth;
+
+            if (i == l)
+            {
+                neopixelStrip.setPixelColor(i, secondaryColor); 
+            }
+            else if (i > l && i < r)
+            {
+                neopixelStrip.setPixelColor(i, primaryColor); 
+            }
+            else if (i == r)
+            {
+                neopixelStrip.setPixelColor(i, secondaryColor); 
+            }
+            else
+            {
+                neopixelStrip.setPixelColor(i, 0x000000);
+            }
+        }
+
+        neopixelStrip.show();
+    }
+
+    void scrobeEffect(const uint32_t color)
+    {
+
     }
 };
