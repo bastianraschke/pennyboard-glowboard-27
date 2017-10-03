@@ -6,7 +6,8 @@ enum State
     RAINBOWCYCLE,
     RAINBOW,
     TWOCOLOR,
-    LASERSCANNER
+    LASERSCANNER,
+    STROBE
 };
 
 enum Direction
@@ -83,6 +84,10 @@ public:
             case LASERSCANNER:
                 updateInterval = 2;
                 break;
+
+            case STROBE:
+                updateInterval = 40;
+                break;
         }
     }
 
@@ -122,6 +127,10 @@ private:
 
             case LASERSCANNER:
                 laserScanner(0x00AEFF);
+                break;
+
+            case STROBE:
+                strobe(0x00AEFF);
                 break;
         }
     }
@@ -278,8 +287,23 @@ private:
         neopixelStrip.show();
     }
 
-    void scrobeEffect(const uint32_t color)
+    void strobe(const uint32_t color)
     {
+        if (currentIndex % 2 == 0)
+        {
+            for (int i = 0; i < neopixelCount; i++)
+            {
+                neopixelStrip.setPixelColor(i, color);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < neopixelCount; i++)
+            {
+                neopixelStrip.setPixelColor(i, 0x000000);
+            }
+        }
 
+        neopixelStrip.show();
     }
 };
