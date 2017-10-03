@@ -87,7 +87,7 @@ public:
                 break;
 
             case LASERSCANNER:
-                updateInterval = 3;
+                updateInterval = 2;
                 break;
         }
     }
@@ -101,7 +101,7 @@ private:
     unsigned long updateInterval = 10;
     unsigned long lastUpdate = 0;
     uint16_t currentIndex = 0;
-    uint16_t totalSteps = 255;
+    uint16_t totalSteps = 256;
 
     State state;
     Direction direction = LEFT;
@@ -170,26 +170,44 @@ private:
 
     void laserScanner(const uint32_t primaryColor)
     {
-        const uint16_t neopixelCount = neopixelStrip.numPixels();
-        const int scannerWidth = 3;
-        
-        int currentLed;
+        const uint16_t numberOfLeds = neopixelStrip.numPixels();
+        const uint8_t scannerPrimaryWidth = 2;
+
+        const uint16_t minIndex = 0;
+        const uint16_t maxIndex = numberOfLeds - 1;
+
+        int lLimit;
+        int rLimit;
 
         if (direction == LEFT) {
-            currentLed = map(currentIndex, 0, 255, 0, neopixelCount);
+            lLimit = minIndex + scannerPrimaryWidth;
+            rLimit = maxIndex - scannerPrimaryWidth;
         } else {
-            currentLed = map(currentIndex, 0, 255, neopixelCount, 0);
+            lLimit = maxIndex - scannerPrimaryWidth;
+            rLimit = minIndex + scannerPrimaryWidth;
         }
 
-        // TODO: check != 0
-        const uint32_t secondaryColor = (primaryColor >> 16 & 0xFF) / 2 << 16 | (primaryColor >> 8 & 0xFF) / 2 << 8 | (primaryColor >> 0 & 0xFF) / 2;
+        const uint16_t currentLimitedIndex = round(map(currentIndex, 0, 255, lLimit, rLimit));
 
-        for (int i = 0; i < neopixelCount; i++) {
-            if (i == currentLed - scannerWidth) {
+        const uint32_t secondaryColorR = (primaryColor >> 16 & 0xFF);
+        const uint32_t secondaryColorG = (primaryColor >>  8 & 0xFF);
+        const uint32_t secondaryColorB = (primaryColor >>  0 & 0xFF);
+
+        const uint32_t secondaryColor = (
+            (secondaryColorR > 0 ? (secondaryColorR / 2) : 0x00) << 16 |
+            (secondaryColorG > 0 ? (secondaryColorG / 2) : 0x00) <<  8 |
+            (secondaryColorB > 0 ? (secondaryColorB / 2) : 0x00) <<  0
+        );
+
+        for (int i = 0; i < numberOfLeds; i++) {
+            const int l = currentLimitedIndex - scannerPrimaryWidth;
+            const int r = currentLimitedIndex + scannerPrimaryWidth;
+
+            if (i == l) {
                 neopixelStrip.setPixelColor(i, secondaryColor); 
-            } else if (i > currentLed - scannerWidth && i < currentLed + scannerWidth) {
+            } else if (i > l && i < r) {
                 neopixelStrip.setPixelColor(i, primaryColor); 
-            } else if (i == currentLed + scannerWidth) {
+            } else if (i == r) {
                 neopixelStrip.setPixelColor(i, secondaryColor); 
             } else {
                 neopixelStrip.setPixelColor(i, 0x000000);
