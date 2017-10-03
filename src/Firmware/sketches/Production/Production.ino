@@ -66,6 +66,13 @@ double initialGyroX;
 double initialGyroY;
 double initialGyroZ;
 
+double initialAccX;
+double initialAccY;
+double initialAccZ;
+
+double initialmergedacc;
+
+
 long initialGyro;
 
 void setupMotionSensor()
@@ -79,9 +86,17 @@ void setupMotionSensor()
     motionSensor.setup();
 
     motionSensor.update();
+
     initialGyroX = motionSensor.getGyroX();
     initialGyroY = motionSensor.getGyroY();
     initialGyroZ = motionSensor.getGyroY();
+
+    initialAccX = motionSensor.getRawAccX();
+    initialAccY = motionSensor.getRawAccY();
+    initialAccZ = motionSensor.getRawAccZ();
+
+    initialmergedacc = motionSensor.getRawAccX() + motionSensor.getRawAccY() + motionSensor.getRawAccZ();
+    initialmergedacc = abs(initialmergedacc); 
 
     Serial.print("initialGyroX = ");
     Serial.println(initialGyroX);
@@ -91,6 +106,18 @@ void setupMotionSensor()
 
     Serial.print("initialGyroZ = ");
     Serial.println(initialGyroZ);
+
+    Serial.print("initialAccX = ");
+    Serial.println(initialAccX);
+    
+    Serial.print("initialAccY = ");
+    Serial.println(initialAccY);
+
+    Serial.print("initialAccZ = ");
+    Serial.println(initialAccZ);
+
+    Serial.print("initialmergedacc = ");
+    Serial.println(initialmergedacc);
 
     Serial.println("setupMotionSensor(): Calibration done. Sensor is ready.");
 
@@ -140,6 +167,9 @@ long previousacc = 0;
 long previousupdate;
 long previousanimationupdate = 0;
 bool prevmovementdetected = false;
+
+long noMotionDetectedSince;
+
 void loop()
 {
     // Only update Neopixels if the IR is idling to avoid interrupt caused timing issues
@@ -215,7 +245,7 @@ void loop()
 
     motionSensor.update();
 
-
+    // TODO: Just use motion is drive axis
 
 
     bool movementdetected;
@@ -223,37 +253,44 @@ void loop()
     mergedacc = motionSensor.getRawAccX() + motionSensor.getRawAccY() + motionSensor.getRawAccZ();
     mergedacc = abs(mergedacc); 
 
-    if (isNotInRange(mergedacc, previousacc - 500, previousacc + 500) /* && (millis() - previousupdate) > 300*/) {
 
-            previousupdate = millis();
-            previousacc = mergedacc;
 
-            Serial.println(previousupdate);
-            Serial.println("Movement detected");
+    if (isNotInRange(mergedacc, previousacc - 500, previousacc + 500)) {
+        previousupdate = millis();
+        previousacc = mergedacc;
+        Serial.println(previousupdate);
+        Serial.println("Movement detected");
 
-            movementdetected = true;
-
+        movementdetected = true;
     } else {
-
-            //Serial.println("NO Movement detected");
-
-            movementdetected = false;
+        movementdetected = false;
     }
 
-    if (prevmovementdetected != movementdetected && (millis() - previousanimationupdate) > 1000) {
-        Serial.println("Movement detected AND animation need to change");
-
-        if (movementdetected) {
-        neoPixels.setState(RAINBOWCYCLE);
-        } else {
-        neoPixels.setState(LASERSCANNER);
-            
-        }
-        
-
+    if (prevmovementdetected != movementdetected) {
         prevmovementdetected = movementdetected;
+
+
+         if (!movementdetected && (millis() - previousanimationupdate) > 3500) {
+            neoPixels.setState(LASERSCANNER);
+
+            Serial.println("A switching to IDLE");
+
+         } else {
+            neoPixels.setState(RAINBOWCYCLE);
+         }
+        
         previousanimationupdate = millis();
-    } else {
+
+
+    } else if (!movementdetected && (millis() - previousanimationupdate) > 2000) {
+            previousanimationupdate = millis();
+            neoPixels.setState(LASERSCANNER);
+
+            Serial.println("B switching to IDLE");
+            
+         }
+    else {
+       // Serial.println("prevmovementdetected == movementdetected - do nothing");
     }
 
 
