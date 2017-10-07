@@ -64,6 +64,7 @@ public:
             ySum += ((i2cData[2] << 8) | i2cData[3]);
             zSum += ((i2cData[4] << 8) | i2cData[5]);
         }
+
         gyrXoffs = xSum / num;
         gyrYoffs = ySum / num;
         gyrZoffs = zSum / num;
@@ -84,10 +85,13 @@ public:
 
             uint8_t i2cData[14];
             uint8_t error;
+
             // read imu data
             error = i2c_read(MPU6050_I2C_ADDRESS, 0x3b, i2cData, 14);
-            if(error!=0)
+
+            if (error != 0) {
                 return;
+            }
 
             // assemble 16 bit sensor data
             accX = ((i2cData[0] << 8) | i2cData[1]);
@@ -98,7 +102,6 @@ public:
             gyrY = (((i2cData[10] << 8) | i2cData[11]) - gyrYoffs) / gSensitivity;
             gyrZ = (((i2cData[12] << 8) | i2cData[13]) - gyrZoffs) / gSensitivity;
 
-            //double dT;
             double ax, ay, az;
 
             // angles based on accelerometer

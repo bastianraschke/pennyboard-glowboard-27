@@ -82,7 +82,7 @@ public:
                 break;
 
             case LASERSCANNER:
-                updateInterval = 1;
+                updateInterval = 2;
                 break;
 
             case STROBE:
