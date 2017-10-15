@@ -13,10 +13,11 @@
 #define ANIMATION_TIMEOUT_OTHER 500
 
 #define MOTIONSENSOR_THRESHOLD_MOVEMENT 3500
-#define MOTIONSENSOR_THRESHOLD_PUSHING 10000
+#define MOTIONSENSOR_THRESHOLD_PUSHING 15000
 
 // Enable only for testing/setup because it dramatically slows down loop cycle and animations!
-#define PRINT_SENSOR_DATA 0
+#define PRINT_MOTIONSENSOR_DATA 0
+#define PRINT_IRSENSOR_DATA 0
 
 enum MovementState
 {
@@ -32,7 +33,7 @@ decode_results irReceiverResults;
 
 SimpleMPU6050A motionSensor = SimpleMPU6050A();
 
-bool remoteControlOverrideActive = false;
+bool remoteControlOverrideActive = true;
 
 unsigned long previousAnimationUpdateTimestamp = 0;
 MovementState previousMovementState = IDLE;
@@ -52,7 +53,7 @@ void setup()
     setupIrReceiver();
     setupMotionSensor();
 
-    #if PRINT_SENSOR_DATA == 1
+    #if PRINT_MOTIONSENSOR_DATA == 1
         Serial.println(F("printSensorDataCounter;getRawAccX;getRawAccY;getRawAccZ;getGyroX;getGyroY;getGyroZ"));
     #endif
 }
@@ -93,7 +94,6 @@ void loop()
     if (irReceiver.decode(&irReceiverResults))
     {
         const long decodedValue = irReceiverResults.value;
-        Serial.println(decodedValue, HEX);
 
         // Important: No default because of busy codes of IR receiver
         switch (decodedValue)
@@ -106,8 +106,8 @@ void loop()
 
             // Button 'On'
             case 0xF7C03F:
-                neoPixels.setState(TWOCOLOR);
-                remoteControlOverrideActive = true;
+                neoPixels.setState(LASERSCANNER);
+                remoteControlOverrideActive = false;
                 break;
 
             // Button 'Brighter'
@@ -122,26 +122,41 @@ void loop()
                 remoteControlOverrideActive = true;
                 break;
 
+            // Button 'W'
+            case 0xF7E01F:
+                neoPixels.setState(LASERSCANNER);
+                remoteControlOverrideActive = true;
+                break;
+
             // Button 'Flash'
             case 0xF7D02F:
-                neoPixels.setState(RAINBOWCYCLE);
+                neoPixels.setState(TWOCOLOR);
                 remoteControlOverrideActive = true;
                 break;
 
             // Button 'Strobe'
             case 0xF7F00F:
-                neoPixels.setState(RAINBOW);
+                neoPixels.setState(STROBE);
                 remoteControlOverrideActive = true;
                 break;
 
             // Button 'Fade'
             case 0xF7C837:
+                neoPixels.setState(RAINBOW);
+                remoteControlOverrideActive = true;
                 break;
 
             // Button 'Smooth'
             case 0xF7E817:
+                neoPixels.setState(RAINBOWCYCLE);
+                remoteControlOverrideActive = true;
                 break;
         }
+
+        #if PRINT_IRSENSOR_DATA == 1
+            Serial.print(F("Value of IR receiver = "));
+            Serial.println(decodedValue, HEX);
+        #endif
 
         irReceiver.resume();
     }
@@ -150,8 +165,12 @@ void loop()
     {
         const MovementState currentMovementState = getCurrentMotionState();
 
+        // Normal animations are shown for a minium amount of time to avoid flickering
         const bool animationTimeoutIsOver = (millis() - previousAnimationUpdateTimestamp) > ANIMATION_TIMEOUT_OTHER;
+
+        // Some special animations need to change immediately (independently of the timeout condition)
         const bool immediatelyChangeAnimationDetected = currentMovementState == PUSHING || currentMovementState == CARRYING;
+
         const bool animationChangeIsAllowed = animationTimeoutIsOver || immediatelyChangeAnimationDetected;
 
         if (previousMovementState != currentMovementState && animationChangeIsAllowed)
@@ -164,7 +183,7 @@ void loop()
                     break;
 
                 case MOVING:
-                    neoPixels.setState(RAINBOW);
+                    neoPixels.setState(RAINBOWCYCLE);
                     previousAnimationUpdateTimestamp = millis();
                     break;
 
@@ -195,7 +214,7 @@ MovementState getCurrentMotionState()
 {
     motionSensor.update();
 
-    #if PRINT_SENSOR_DATA == 1
+    #if PRINT_MOTIONSENSOR_DATA == 1
         Serial.print(printSensorDataCounter);
         Serial.print(";");
 
@@ -211,7 +230,6 @@ MovementState getCurrentMotionState()
         Serial.print(motionSensor.getGyroY());
         Serial.print(";");
         Serial.print(motionSensor.getGyroZ());
-        Serial.print(";");
 
         Serial.println();
         printSensorDataCounter++;
@@ -219,26 +237,19 @@ MovementState getCurrentMotionState()
 
     MovementState currentMovementState;
 
+    // TODO: Not working properly
     // const bool boardIsBeingCarried = isNotInRange(motionSensor.getGyroY(), 86 - 20, 86 + 20) && isNotInRange(motionSensor.getGyroZ(), -30, 30);
+
     const bool boardIsBeingCarried = false;
 
     if (boardIsBeingCarried)
     {
-        // Serial.print("getGyroY = ");
-        // Serial.println(motionSensor.getGyroY());
-
-        // Serial.print("getGyroZ = ");
-        // Serial.println(motionSensor.getGyroZ());
-
         Serial.println(F("The board seems being carried."));
         currentMovementState = CARRYING;
     }
     else
     {
         unsigned long rawAccelarationDataY = abs(motionSensor.getRawAccY());
-
-        // Serial.print("rawAccelarationDataY = ");
-        // Serial.println(rawAccelarationDataY);
 
         if (rawAccelarationDataY > MOTIONSENSOR_THRESHOLD_PUSHING)
         {
