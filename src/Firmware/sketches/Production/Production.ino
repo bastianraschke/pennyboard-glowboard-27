@@ -12,8 +12,8 @@
 #define ANIMATION_TIMEOUT_IDLE 2000
 #define ANIMATION_TIMEOUT_OTHER 500
 
-#define THRESHOLD_MOVEMENT 3500
-#define THRESHOLD_PUSHING 10000
+#define MOTIONSENSOR_THRESHOLD_MOVEMENT 3500
+#define MOTIONSENSOR_THRESHOLD_PUSHING 10000
 
 // Enable only for testing/setup because it dramatically slows down loop cycle and animations!
 #define PRINT_SENSOR_DATA 0
@@ -240,12 +240,12 @@ MovementState getCurrentMotionState()
         // Serial.print("rawAccelarationDataY = ");
         // Serial.println(rawAccelarationDataY);
 
-        if (rawAccelarationDataY > THRESHOLD_PUSHING)
+        if (rawAccelarationDataY > MOTIONSENSOR_THRESHOLD_PUSHING)
         {
             Serial.println(F("Pushing on Y axis was detected."));
             currentMovementState = PUSHING;
         }
-        else if (rawAccelarationDataY > THRESHOLD_MOVEMENT)
+        else if (rawAccelarationDataY > MOTIONSENSOR_THRESHOLD_MOVEMENT)
         {
             Serial.println(F("Movement on Y axis was detected."));
             currentMovementState = MOVING;
