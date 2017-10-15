@@ -33,7 +33,7 @@ decode_results irReceiverResults;
 
 SimpleMPU6050A motionSensor = SimpleMPU6050A();
 
-bool remoteControlOverrideActive = true;
+bool motionSensorBasedAnimationsActive = false;
 
 unsigned long previousAnimationUpdateTimestamp = 0;
 MovementState previousMovementState = IDLE;
@@ -52,10 +52,6 @@ void setup()
     setupNeoPixels();
     setupIrReceiver();
     setupMotionSensor();
-
-    #if PRINT_MOTIONSENSOR_DATA == 1
-        Serial.println(F("printSensorDataCounter;getRawAccX;getRawAccY;getRawAccZ;getGyroX;getGyroY;getGyroZ"));
-    #endif
 }
 
 void setupNeoPixels()
@@ -101,67 +97,82 @@ void loop()
             // Button 'Off'
             case 0xF740BF:
                 neoPixels.setState(OFF);
-                remoteControlOverrideActive = true;
+                motionSensorBasedAnimationsActive = false;
                 break;
 
             // Button 'On'
             case 0xF7C03F:
                 neoPixels.setState(LASERSCANNER);
-                remoteControlOverrideActive = false;
+                motionSensorBasedAnimationsActive = true;
                 break;
 
             // Button 'Brighter'
             case 0xF700FF:
                 neoPixels.setBrightnessHigh();
-                remoteControlOverrideActive = true;
+                motionSensorBasedAnimationsActive = false;
                 break;
 
             // Button 'Darker'
             case 0xF7807F:
                 neoPixels.setBrightnessLow();
-                remoteControlOverrideActive = true;
+                motionSensorBasedAnimationsActive = false;
+                break;
+
+            // Button 'R'
+            case 0xF720DF:
+                neoPixels.setState(NIGHTRIDER);
+                motionSensorBasedAnimationsActive = false;
                 break;
 
             // Button 'W'
             case 0xF7E01F:
                 neoPixels.setState(LASERSCANNER);
-                remoteControlOverrideActive = true;
+                motionSensorBasedAnimationsActive = false;
                 break;
 
             // Button 'Flash'
             case 0xF7D02F:
                 neoPixels.setState(TWOCOLOR);
-                remoteControlOverrideActive = true;
+                motionSensorBasedAnimationsActive = false;
                 break;
 
             // Button 'Strobe'
             case 0xF7F00F:
                 neoPixels.setState(STROBE);
-                remoteControlOverrideActive = true;
+                motionSensorBasedAnimationsActive = false;
                 break;
 
             // Button 'Fade'
             case 0xF7C837:
                 neoPixels.setState(RAINBOW);
-                remoteControlOverrideActive = true;
+                motionSensorBasedAnimationsActive = false;
                 break;
 
             // Button 'Smooth'
             case 0xF7E817:
                 neoPixels.setState(RAINBOWCYCLE);
-                remoteControlOverrideActive = true;
+                motionSensorBasedAnimationsActive = false;
                 break;
         }
 
+        if (motionSensorBasedAnimationsActive)
+        {
+            Serial.println(F("Motion sensor based animations activated."));
+        }
+        else
+        {
+            Serial.println(F("Motion sensor based animations deactivated."));
+        }
+
         #if PRINT_IRSENSOR_DATA == 1
-            Serial.print(F("Value of IR receiver = "));
+            Serial.print(F("Value of IR receiver = 0x"));
             Serial.println(decodedValue, HEX);
         #endif
 
         irReceiver.resume();
     }
 
-    if (!remoteControlOverrideActive)
+    if (motionSensorBasedAnimationsActive)
     {
         const MovementState currentMovementState = getCurrentMotionState();
 
@@ -177,23 +188,29 @@ void loop()
         {
             switch(currentMovementState)
             {
-                case PUSHING:
-                    neoPixels.setState(STROBE);
-                    previousAnimationUpdateTimestamp = millis();
+                case IDLE:
+                    // Do no animation changes for this state here
+                    previousMovementState = currentMovementState;
                     break;
 
                 case MOVING:
-                    neoPixels.setState(RAINBOWCYCLE);
+                    neoPixels.setState(TWOCOLOR);
                     previousAnimationUpdateTimestamp = millis();
+                    previousMovementState = currentMovementState;
+                    break;
+
+                case PUSHING:
+                    neoPixels.setState(STROBE);
+                    previousAnimationUpdateTimestamp = millis();
+                    previousMovementState = currentMovementState;
                     break;
 
                 case CARRYING:
                     neoPixels.setState(OFF);
                     previousAnimationUpdateTimestamp = millis();
+                    previousMovementState = currentMovementState;
                     break;
             }
-
-            previousMovementState = currentMovementState;
         }
         else if ((millis() - previousAnimationUpdateTimestamp) > ANIMATION_TIMEOUT_IDLE && currentMovementState == IDLE)
         {

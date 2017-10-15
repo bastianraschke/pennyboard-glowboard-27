@@ -7,6 +7,7 @@ enum State
     RAINBOW,
     TWOCOLOR,
     LASERSCANNER,
+    NIGHTRIDER,
     STROBE
 };
 
@@ -85,6 +86,10 @@ public:
                 updateInterval = 2;
                 break;
 
+            case NIGHTRIDER:
+                updateInterval = 2;
+                break;
+
             case STROBE:
                 updateInterval = 40;
                 break;
@@ -127,6 +132,10 @@ private:
 
             case LASERSCANNER:
                 laserScanner(0x00AEFF);
+                break;
+
+            case NIGHTRIDER:
+                laserScanner(0xFF0000);
                 break;
 
             case STROBE:
