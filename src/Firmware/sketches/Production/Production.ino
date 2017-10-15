@@ -32,6 +32,8 @@ decode_results irReceiverResults;
 
 SimpleMPU6050A motionSensor = SimpleMPU6050A();
 
+bool remoteControlOverrideActive = false;
+
 unsigned long previousAnimationUpdateTimestamp = 0;
 MovementState previousMovementState = IDLE;
 
@@ -88,92 +90,100 @@ void loop()
         neoPixels.update();
     }
 
-    const MovementState currentMovementState = getCurrentMotionState();
-
-    const bool animationTimeoutIsOver = (millis() - previousAnimationUpdateTimestamp) > ANIMATION_TIMEOUT_OTHER;
-    const bool immediatelyChangeAnimationDetected = currentMovementState == PUSHING || currentMovementState == CARRYING;
-    const bool animationChangeIsAllowed = animationTimeoutIsOver || immediatelyChangeAnimationDetected;
-
-    if (previousMovementState != currentMovementState && animationChangeIsAllowed)
+    if (irReceiver.decode(&irReceiverResults))
     {
-        switch(currentMovementState)
+        const long decodedValue = irReceiverResults.value;
+        Serial.println(decodedValue, HEX);
+
+        // Important: No default because of busy codes of IR receiver
+        switch (decodedValue)
         {
-            case PUSHING:
-                neoPixels.setState(STROBE);
-                previousAnimationUpdateTimestamp = millis();
-                break;
-
-            case MOVING:
-                neoPixels.setState(RAINBOW);
-                previousAnimationUpdateTimestamp = millis();
-                break;
-
-            case CARRYING:
+            // Button 'Off'
+            case 0xF740BF:
                 neoPixels.setState(OFF);
-                previousAnimationUpdateTimestamp = millis();
+                remoteControlOverrideActive = true;
+                break;
+
+            // Button 'On'
+            case 0xF7C03F:
+                neoPixels.setState(TWOCOLOR);
+                remoteControlOverrideActive = true;
+                break;
+
+            // Button 'Brighter'
+            case 0xF700FF:
+                neoPixels.setBrightnessHigh();
+                remoteControlOverrideActive = true;
+                break;
+
+            // Button 'Darker'
+            case 0xF7807F:
+                neoPixels.setBrightnessLow();
+                remoteControlOverrideActive = true;
+                break;
+
+            // Button 'Flash'
+            case 0xF7D02F:
+                neoPixels.setState(RAINBOWCYCLE);
+                remoteControlOverrideActive = true;
+                break;
+
+            // Button 'Strobe'
+            case 0xF7F00F:
+                neoPixels.setState(RAINBOW);
+                remoteControlOverrideActive = true;
+                break;
+
+            // Button 'Fade'
+            case 0xF7C837:
+                break;
+
+            // Button 'Smooth'
+            case 0xF7E817:
                 break;
         }
 
-        previousMovementState = currentMovementState;
+        irReceiver.resume();
     }
-    else if ((millis() - previousAnimationUpdateTimestamp) > ANIMATION_TIMEOUT_IDLE && currentMovementState == IDLE)
+
+    if (!remoteControlOverrideActive)
     {
-        neoPixels.setState(LASERSCANNER);
-        previousAnimationUpdateTimestamp = millis();
+        const MovementState currentMovementState = getCurrentMotionState();
 
-        Serial.println(F("No movement detected since timeout - switched to idle."));
+        const bool animationTimeoutIsOver = (millis() - previousAnimationUpdateTimestamp) > ANIMATION_TIMEOUT_OTHER;
+        const bool immediatelyChangeAnimationDetected = currentMovementState == PUSHING || currentMovementState == CARRYING;
+        const bool animationChangeIsAllowed = animationTimeoutIsOver || immediatelyChangeAnimationDetected;
+
+        if (previousMovementState != currentMovementState && animationChangeIsAllowed)
+        {
+            switch(currentMovementState)
+            {
+                case PUSHING:
+                    neoPixels.setState(STROBE);
+                    previousAnimationUpdateTimestamp = millis();
+                    break;
+
+                case MOVING:
+                    neoPixels.setState(RAINBOW);
+                    previousAnimationUpdateTimestamp = millis();
+                    break;
+
+                case CARRYING:
+                    neoPixels.setState(OFF);
+                    previousAnimationUpdateTimestamp = millis();
+                    break;
+            }
+
+            previousMovementState = currentMovementState;
+        }
+        else if ((millis() - previousAnimationUpdateTimestamp) > ANIMATION_TIMEOUT_IDLE && currentMovementState == IDLE)
+        {
+            neoPixels.setState(LASERSCANNER);
+            previousAnimationUpdateTimestamp = millis();
+
+            Serial.println(F("No movement detected since timeout - switched to idle."));
+        }
     }
-
-    // if (irReceiver.decode(&irReceiverResults))
-    // {
-    //     const long decodedValue = irReceiverResults.value;
-    //     Serial.println(decodedValue, HEX);
-
-    //     // Important: No default because of busy codes of IR receiver
-    //     switch (decodedValue)
-    //     {
-    //         // Button 'Off'
-    //         case 0xF740BF:
-    //             neoPixels.setState(OFF);
-    //             break;
-
-    //         // Button 'On'
-    //         case 0xF7C03F:
-    //             neoPixels.setState(TWOCOLOR);
-    //             break;
-
-    //         // Button 'Brighter'
-    //         case 0xF700FF:
-    //             neoPixels.setBrightnessHigh();
-    //             break;
-
-    //         // Button 'Darker'
-    //         case 0xF7807F:
-    //             neoPixels.setBrightnessLow();
-    //             break;
-
-    //         // Button 'Flash'
-    //         case 0xF7D02F:
-    //             neoPixels.setState(RAINBOWCYCLE);
-    //             break;
-
-    //         // Button 'Strobe'
-    //         case 0xF7F00F:
-    //             neoPixels.setState(RAINBOW);
-    //             break;
-
-    //         // Button 'Fade'
-    //         case 0xF7C837:
-    //             neoPixels.setState(COLORWIPE);
-    //             break;
-
-    //         // Button 'Smooth'
-    //         case 0xF7E817:
-    //             break;
-    //     }
-
-    //     irReceiver.resume();
-    // }
 }
 
 bool isIRReceicerIdle()
@@ -209,24 +219,26 @@ MovementState getCurrentMotionState()
 
     MovementState currentMovementState;
 
-    // if (isNotInRange(motionSensor.getGyroY(), 86 - 20, 86 + 20) && isNotInRange(motionSensor.getGyroZ(), -30, 30)) {
+    // const bool boardIsBeingCarried = isNotInRange(motionSensor.getGyroY(), 86 - 20, 86 + 20) && isNotInRange(motionSensor.getGyroZ(), -30, 30);
+    const bool boardIsBeingCarried = false;
 
-    //     currentMovementState = CARRYING;
+    if (boardIsBeingCarried)
+    {
+        // Serial.print("getGyroY = ");
+        // Serial.println(motionSensor.getGyroY());
 
-    //     Serial.println(F("The board seems being carried."));
+        // Serial.print("getGyroZ = ");
+        // Serial.println(motionSensor.getGyroZ());
 
-    //     // Serial.print("getGyroY = ");
-    //     // Serial.println(motionSensor.getGyroY());
-
-    //     // Serial.print("getGyroZ = ");
-    //     // Serial.println(motionSensor.getGyroZ());
-
-    // } else {
-
+        Serial.println(F("The board seems being carried."));
+        currentMovementState = CARRYING;
+    }
+    else
+    {
         unsigned long rawAccelarationDataY = abs(motionSensor.getRawAccY());
 
-        Serial.print("rawAccelarationDataY = ");
-        Serial.println(rawAccelarationDataY);
+        // Serial.print("rawAccelarationDataY = ");
+        // Serial.println(rawAccelarationDataY);
 
         if (rawAccelarationDataY > THRESHOLD_PUSHING)
         {
@@ -242,7 +254,7 @@ MovementState getCurrentMotionState()
         {
             currentMovementState = IDLE;
         }
-    // }
+    }
 
     return currentMovementState;
 }
