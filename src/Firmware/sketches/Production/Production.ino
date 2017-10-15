@@ -33,10 +33,6 @@ double initialAccZ;
 
 long printSensorDataCounter = 1;
 
-unsigned long previousMergedRawAccelarationData = 0;
-unsigned long previousAnimationUpdateTimestamp = 0;
-bool previousMovementWasDetected = false;
-
 void onNeoPixelAnimationComplete()
 {
     // Not needed
@@ -75,46 +71,26 @@ void setupIrReceiver()
 void setupMotionSensor()
 {
     Serial.println("setupMotionSensor(): Calibrating MPU6050 gyro and accelaration sensor...");
-
-    // Calibrate only
     motionSensor.calibrate();
-
-    // Setup registers etc.
     motionSensor.setup();
-
     Serial.println("setupMotionSensor(): Calibration done.");
-
-    // Initial update
-    motionSensor.update();
-
-    initialGyroX = motionSensor.getGyroX();
-    initialGyroY = motionSensor.getGyroY();
-    initialGyroZ = motionSensor.getGyroY();
-
-    initialAccX = motionSensor.getRawAccX();
-    initialAccY = motionSensor.getRawAccY();
-    initialAccZ = motionSensor.getRawAccZ();
-
-    #if PRINT_SENSOR_DATA == 1
-        Serial.print("setupMotionSensor(): initialGyroX = ");
-        Serial.println(initialGyroX);
-        
-        Serial.print("setupMotionSensor(): initialGyroY = ");
-        Serial.println(initialGyroY);
-
-        Serial.print("setupMotionSensor(): initialGyroZ = ");
-        Serial.println(initialGyroZ);
-
-        Serial.print("setupMotionSensor(): initialAccX = ");
-        Serial.println(initialAccX);
-        
-        Serial.print("setupMotionSensor(): initialAccY = ");
-        Serial.println(initialAccY);
-
-        Serial.print("setupMotionSensor(): initialAccZ = ");
-        Serial.println(initialAccZ);
-    #endif
 }
+
+enum MovementState
+{
+    IDLE,
+    MOVING,
+    PUSHING,
+    CARRYING
+};
+
+
+long previousRawAccelarationDataY = 0;
+
+unsigned long previousMergedRawAccelarationData = 0;
+unsigned long previousAnimationUpdateTimestamp = 0;
+
+MovementState previousMovementState = IDLE;
 
 void loop()
 {
@@ -126,45 +102,120 @@ void loop()
 
     motionSensor.update();
 
-    // TODO: Just use motion is drive axis
-    // TODO: detect pushing
-    // TODO: avoid move detection if gyro is changed
+    MovementState currentMovementState;
 
-    bool movementWasDetected;
+    // if (isNotInRange(motionSensor.getGyroY(), 86 - 20, 86 + 20) && isNotInRange(motionSensor.getGyroZ(), -30, 30)) {
 
-    long mergedRawAccelarationData = motionSensor.getRawAccX() + motionSensor.getRawAccY() + motionSensor.getRawAccZ();
-    mergedRawAccelarationData = abs(mergedRawAccelarationData); 
+    //     currentMovementState = CARRYING;
 
-    // Serial.print("mergedRawAccelarationData = ");
-    // Serial.println(mergedRawAccelarationData);
+    //     Serial.println("The board seems being carried.");
 
-    const long lowerAccelarationThreshold = previousMergedRawAccelarationData - MERGED_SENSOR_DATA_THRESHOLD;
-    const long higherAccelarationThreshold = previousMergedRawAccelarationData + MERGED_SENSOR_DATA_THRESHOLD;
+    //     // Serial.print("getGyroY = ");
+    //     // Serial.println(motionSensor.getGyroY());
 
-    if (isNotInRange(mergedRawAccelarationData, lowerAccelarationThreshold, higherAccelarationThreshold)) {
-        previousMergedRawAccelarationData = mergedRawAccelarationData;
-        Serial.println("Movement was detected.");
+    //     // Serial.print("getGyroZ = ");
+    //     // Serial.println(motionSensor.getGyroZ());
 
-        movementWasDetected = true;
-    } else {
-        movementWasDetected = false;
-    }
+    // } else {
 
-    if (previousMovementWasDetected != movementWasDetected) {
-        previousMovementWasDetected = movementWasDetected;
+        unsigned long rawAccelarationDataY = abs(motionSensor.getRawAccY());
 
-        if (movementWasDetected) {
-            neoPixels.setState(RAINBOWCYCLE);
-            previousAnimationUpdateTimestamp = millis();
+        Serial.print("rawAccelarationDataY = ");
+        Serial.println(rawAccelarationDataY);
+
+        if (rawAccelarationDataY > 10000)
+        {
+            // Serial.println("Pushing on Y axis was detected.");
+            currentMovementState = PUSHING;
+        }
+        else if (rawAccelarationDataY > 3500)
+        {
+            // Serial.println("Movement on Y axis was detected.");
+            currentMovementState = MOVING;
+        }
+        else
+        {
+            currentMovementState = IDLE;
+        }
+    // }
+
+    const bool animationTimeoutIsOver = (millis() - previousAnimationUpdateTimestamp) > 500;
+    const bool immediatelyChangeAnimationDetected = currentMovementState == PUSHING || currentMovementState == CARRYING;
+    const bool animationChangeIsAllowed = animationTimeoutIsOver || immediatelyChangeAnimationDetected;
+
+    // Serial.print("previousMovementState != currentMovementState = ");
+    // Serial.println(previousMovementState != currentMovementState);
+
+    // Serial.print("                        previousMovementState = ");
+
+    // switch(previousMovementState) {
+    //     case IDLE:
+    //         Serial.println("IDLE");
+    //         break;
+    //     case MOVING:
+    //         Serial.println("MOVING");
+    //         break;
+    //     case PUSHING:
+    //         Serial.println("PUSHING");
+    //         break;
+    //     case CARRYING:
+    //         Serial.println("CARRYING");
+    //         break;
+    // }
+
+    // Serial.print("                         currentMovementState = ");
+
+    // switch(currentMovementState) {
+    //     case IDLE:
+    //         Serial.println("IDLE");
+    //         break;
+    //     case MOVING:
+    //         Serial.println("MOVING");
+    //         break;
+    //     case PUSHING:
+    //         Serial.println("PUSHING");
+    //         break;
+    //     case CARRYING:
+    //         Serial.println("CARRYING");
+    //         break;
+    // }
+
+    // Serial.print("                     animationChangeIsAllowed = ");
+    // Serial.println(animationChangeIsAllowed);
+
+    // Serial.println();
+
+    if (previousMovementState != currentMovementState && animationChangeIsAllowed)
+    {
+        switch(currentMovementState)
+        {
+            case PUSHING:
+                neoPixels.setState(STROBE);
+                previousAnimationUpdateTimestamp = millis();
+                break;
+
+            case MOVING:
+                neoPixels.setState(RAINBOW);
+                previousAnimationUpdateTimestamp = millis();
+                break;
+
+            case CARRYING:
+                neoPixels.setState(OFF);
+                previousAnimationUpdateTimestamp = millis();
+                break;
         }
 
-    } else if ((millis() - previousAnimationUpdateTimestamp) > IDLE_ANIMATION_TIMEOUT && !movementWasDetected) {
+        previousMovementState = currentMovementState;
+    }
+    else if ((millis() - previousAnimationUpdateTimestamp) > IDLE_ANIMATION_TIMEOUT && currentMovementState == IDLE)
+    {
         neoPixels.setState(LASERSCANNER);
         previousAnimationUpdateTimestamp = millis();
 
         Serial.println("No movement detected since timeout - switching to idle.");
     }
-   
+
+
 
 
 
